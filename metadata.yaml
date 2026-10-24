@@ -1,7 +1,7 @@
 name: astrbot_plugin_token_usage
 display_name: Token 用量统计
 desc: 按会话记录每天消耗的 token，并查询 DeepSeek 余额；Bot 能在对话中直接告诉你当前会话和今天总共用了多少 token、余额还剩多少
-version: v1.0.0
+version: v1.0.1
 author: NyaNyaDance
 repo: https://github.com/chenxuxin188/astrbot_plugin_token_usage
 astrbot_version: ">=4.12.2"

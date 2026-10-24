@@ -250,9 +250,16 @@ def test_build_report_lines():
     assert "今日全部会话总消耗：33,456 tokens" in text and "涉及 3 个会话" in text
     assert "- deepseek-reasoner：1 tokens" in text
     assert "DeepSeek 余额：¥110.00" in text
+    assert "回答要求" not in text  # /token 给人看的输出不带给 LLM 的说明
 
     empty = report.build_report(day="2026-10-24", session=Usage(), total=Usage(), sessions=0, balance="x")
     assert empty.count("暂无消耗记录") == 2 and "涉及" not in empty
+
+    for_llm = report.build_report(
+        day="2026-10-24", session=Usage(), total=Usage(), sessions=0, balance="x", note=report.LLM_NOTE,
+    )
+    assert for_llm.endswith(report.LLM_NOTE)
+    assert "¥ 表示人民币" in report.LLM_NOTE and "$ 表示美元" in report.LLM_NOTE
 
 
 def test_build_top_report():
@@ -291,7 +298,7 @@ def test_fetch_balance_success_and_cache():
     assert str(seen[0].url) == "https://api.deepseek.com/user/balance"
     assert seen[0].headers["Authorization"] == "Bearer sk-test"
     assert b1 is b2 and b3.is_available
-    assert balance.format_balance(b1) == "¥110.00（充值 100.00，赠金 10.00），可正常调用"
+    assert balance.format_balance(b1) == "人民币 ¥110.00（充值 ¥100.00，赠金 ¥10.00），可正常调用"
 
 
 @pytest.mark.parametrize("response, message", [
@@ -322,8 +329,24 @@ def test_format_balance_unavailable_and_usd():
         "is_available": False,
         "balance_infos": [{"currency": "USD", "total_balance": "0.00"}],
     })
-    assert balance.format_balance(b) == "$0.00（充值 0，赠金 0），余额不足，当前无法调用 API"
+    assert balance.format_balance(b) == "美元 $0.00（充值 $0，赠金 $0），余额不足，当前无法调用 API"
     assert balance.normalize_proxy("127.0.0.1:7890") == "http://127.0.0.1:7890"
+
+
+def test_format_balance_keeps_each_currency_separate_with_symbols():
+    b = balance.parse_balance({
+        "is_available": True,
+        "balance_infos": [
+            {"currency": "CNY", "total_balance": "108.73", "granted_balance": "0.00", "topped_up_balance": "108.73"},
+            {"currency": "USD", "total_balance": "5.20", "granted_balance": "1.20", "topped_up_balance": "4.00"},
+            {"currency": "EUR", "total_balance": "1.00", "granted_balance": "0.00", "topped_up_balance": "1.00"},
+        ],
+    })
+    assert balance.format_balance(b) == (
+        "人民币 ¥108.73（充值 ¥108.73，赠金 ¥0.00）；"
+        "美元 $5.20（充值 $4.00，赠金 $1.20）；"
+        "EUR 1.00 EUR（充值 1.00 EUR，赠金 0.00 EUR），可正常调用"
+    )
     assert balance.normalize_proxy(" ") is None
 
 

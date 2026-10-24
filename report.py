@@ -5,6 +5,9 @@ from datetime import timedelta, timezone, tzinfo
 
 from .usage_store import Usage
 
+# 只附在给 LLM 的工具结果里：DeepSeek 的人民币和美元余额分开计
+LLM_NOTE = "（回答要求：提到余额时每个金额都要带上货币符号，¥ 表示人民币，$ 表示美元；人民币和美元余额分开说明，不要相加或换算。）"
+
 _OFFSET_RE = re.compile(r"(?:UTC|GMT)?\s*([+-])\s*(\d{1,2})(?::?(\d{2}))?", re.IGNORECASE)
 
 
@@ -51,6 +54,7 @@ def build_report(
     balance: str,
     session_label: str = "当前会话",
     models: list[tuple[str, Usage]] | None = None,
+    note: str = "",
 ) -> str:
     lines = [
         f"Token 用量统计（{day}，截至本次查询）",
@@ -62,6 +66,8 @@ def build_report(
         for model, usage in models:
             lines.append(f"    - {model or '未知模型'}：{usage.total:,} tokens")
     lines.append(f"· DeepSeek 余额：{balance}")
+    if note:
+        lines.append(note)
     return "\n".join(lines)
 
 

@@ -7,7 +7,8 @@ from dataclasses import dataclass, field
 import httpx
 
 DEFAULT_BASE_URL = "https://api.deepseek.com"
-CURRENCY_SYMBOLS = {"CNY": "¥", "USD": "$"}
+# 币种代码 -> (中文名, 符号)
+CURRENCIES = {"CNY": ("人民币", "¥"), "USD": ("美元", "$")}
 ERROR_CACHE_SECONDS = 30.0
 
 
@@ -65,16 +66,26 @@ def parse_balance(data) -> Balance:
     return Balance(is_available=bool(data.get("is_available")), infos=infos, fetched_at=time.time())
 
 
+def format_money(amount: str, currency: str) -> str:
+    """每个金额都带上货币符号；不认识的币种在金额后写币种代码"""
+    known = CURRENCIES.get(currency.upper())
+    if known:
+        return f"{known[1]}{amount}"
+    return f"{amount} {currency}".strip()
+
+
 def format_balance(balance: Balance) -> str:
+    # DeepSeek 的人民币和美元余额分开计，各自列出，不能相加
     if not balance.infos:
         text = "暂无余额信息"
     else:
         parts = []
         for info in balance.infos:
-            symbol = CURRENCY_SYMBOLS.get(info.currency.upper(), "")
-            unit = "" if symbol else f" {info.currency}"
+            name = CURRENCIES.get(info.currency.upper(), (info.currency or "未知币种", ""))[0]
             parts.append(
-                f"{symbol}{info.total}{unit}（充值 {info.topped_up}，赠金 {info.granted}）"
+                f"{name} {format_money(info.total, info.currency)}"
+                f"（充值 {format_money(info.topped_up, info.currency)}，"
+                f"赠金 {format_money(info.granted, info.currency)}）"
             )
         text = "；".join(parts)
     state = "可正常调用" if balance.is_available else "余额不足，当前无法调用 API"

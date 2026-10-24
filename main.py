@@ -16,7 +16,7 @@ from .capture import (
     raw_model,
     runner_model,
 )
-from .report import build_report, build_top_report, parse_timezone, session_label
+from .report import LLM_NOTE, build_report, build_top_report, parse_timezone, session_label
 from .usage_store import Usage, UsageStore
 
 PLUGIN_NAME = "astrbot_plugin_token_usage"
@@ -188,11 +188,11 @@ class TokenUsagePlugin(Star):
             return "当前会话"
         return session_label(is_group=is_group, isolated=isolated)
 
-    async def _report(self, event: AstrMessageEvent, *, with_models: bool) -> str:
+    async def _report(self, event: AstrMessageEvent, *, for_llm: bool) -> str:
         day = self._today()
         session = await self.store.session_usage(day, event.unified_msg_origin)
         total, sessions = await self.store.day_usage(day)
-        models = await self.store.day_models(day) if with_models else None
+        models = None if for_llm else await self.store.day_models(day)
         return build_report(
             day=day,
             session=session,
@@ -201,14 +201,15 @@ class TokenUsagePlugin(Star):
             balance=await self._balance_text(event),
             session_label=self._session_label(event),
             models=models,
+            note=LLM_NOTE if for_llm else "",
         )
 
     # ------------------------------------------------------------------ LLM 工具与指令
 
     @filter.llm_tool(name="query_token_usage")
     async def query_token_usage(self, event: AstrMessageEvent):
-        """查询 token 消耗和 DeepSeek API 余额。当用户问到 token 用量、今天消耗/花了多少、API 余额还剩多少时调用。返回当前会话今日消耗的 token、今日所有会话总共消耗的 token，以及 DeepSeek 账户余额；群聊的会话用量通常是全群成员的合计，不是提问者个人的。请根据用户的问题挑选相关数据，用自然的口吻回答。"""
-        return await self._report(event, with_models=False)
+        """查询 token 消耗和 DeepSeek API 余额。当用户问到 token 用量、今天消耗/花了多少、API 余额还剩多少时调用。返回当前会话今日消耗的 token、今日所有会话总共消耗的 token，以及 DeepSeek 账户余额（人民币和美元分开计）；群聊的会话用量通常是全群成员的合计，不是提问者个人的。请根据用户的问题挑选相关数据，用自然的口吻回答，提到金额时带上货币符号。"""
+        return await self._report(event, for_llm=True)
 
     @filter.command("token")
     async def token_cmd(self, event: AstrMessageEvent, action: str = ""):
@@ -224,4 +225,4 @@ class TokenUsagePlugin(Star):
             rows = await self.store.top_sessions(day, 10)
             yield event.plain_result(build_top_report(day, rows)).use_t2i(False)
             return
-        yield event.plain_result(await self._report(event, with_models=True)).use_t2i(False)
+        yield event.plain_result(await self._report(event, for_llm=False)).use_t2i(False)

@@ -82,6 +82,7 @@ def test_whole_run_including_tool_step(tmp_path, scenario):
     report = result["tool_results"][0]
     assert "本群会话（全群成员合计，无法区分到个人）今日消耗：530 tokens" in report
     assert "查询失败（测试中不联网）" in report
+    assert report.rstrip().endswith("不要相加或换算。）")  # 给 LLM 的货币符号说明
 
 
 def test_tool_that_sends_directly_still_books(tmp_path):
