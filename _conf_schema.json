@@ -1,0 +1,63 @@
+{
+  "timezone": {
+    "description": "时区",
+    "type": "string",
+    "default": "UTC+8",
+    "hint": "用来划分「今天」。支持 UTC+8、+08:00 这类偏移写法，也支持 Asia/Shanghai 这类时区名（Windows 上需要安装 tzdata）。留空则使用服务器本地时间。"
+  },
+  "retention_days": {
+    "description": "用量记录保留天数",
+    "type": "int",
+    "default": 90,
+    "hint": "超过该天数的按日用量记录会被自动清理；填 0 表示永久保留。"
+  },
+  "balance_admin_only": {
+    "description": "仅管理员可查询余额",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后，非 AstrBot 管理员在对话中询问余额时，Bot 只会告知 token 用量，不会透露 DeepSeek 余额。"
+  },
+  "deepseek": {
+    "description": "DeepSeek 余额查询",
+    "type": "object",
+    "items": {
+      "api_key": {
+        "description": "DeepSeek API Key",
+        "type": "string",
+        "default": "",
+        "secret": true,
+        "hint": "用于调用 /user/balance 查询余额。留空且开启下方「自动读取」时，会使用 AstrBot 中已配置的 DeepSeek 官方提供商（API 地址包含 api.deepseek.com）的 Key。"
+      },
+      "auto_detect_key": {
+        "description": "自动读取提供商 Key",
+        "type": "bool",
+        "default": true,
+        "hint": "API Key 留空时，从 AstrBot 的模型提供商配置中寻找 DeepSeek 官方 Key。只在下方 API 地址为官方地址 api.deepseek.com 时生效，避免把官方 Key 发给其他服务器。"
+      },
+      "base_url": {
+        "description": "API 地址",
+        "type": "string",
+        "default": "https://api.deepseek.com",
+        "hint": "DeepSeek 官方地址，末尾的 /v1 会被自动去掉。改成其他地址时需要手动填写 API Key；第三方中转服务通常不提供余额接口。"
+      },
+      "proxy_url": {
+        "description": "代理地址",
+        "type": "string",
+        "default": "",
+        "hint": "访问 DeepSeek 时使用的代理，例如 http://127.0.0.1:7890，未写协议时按 http 处理。留空则使用环境变量中的代理（若有）。"
+      },
+      "timeout": {
+        "description": "请求超时（秒）",
+        "type": "float",
+        "default": 15.0,
+        "hint": "取值范围 3～30 秒。查询失败后 30 秒内不会重复请求，直接返回上次的失败原因。"
+      },
+      "cache_seconds": {
+        "description": "余额缓存（秒）",
+        "type": "float",
+        "default": 60.0,
+        "hint": "该时间内重复查询会直接使用上次结果，避免频繁请求；填 0 表示每次都实时查询。"
+      }
+    }
+  }
+}
